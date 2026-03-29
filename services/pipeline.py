@@ -25,13 +25,13 @@ def handle_query_pipeline(query_text, classification_result, age=None, clazz=Non
     classified_into = classification_result.get("classified_into", "").lower()
 
     if classified_into in ["simple", "fact-check"]:
-        response["simple_explanation"] = generate_simple_explanation(query_text, age, clazz)
+        response["simple_explanation"] = generate_simple_explanation(query=query_text, age=age, clazz=clazz, context_text=context_text)
 
     elif classified_into == "medium":
-        response["deep_explanation"] = generate_deep_explanation(query_text, age, clazz)
+        response["deep_explanation"] = generate_deep_explanation(query=query_text, age=age, clazz=clazz, context_text=context_text)
 
     elif classified_into == "hard":
-        response["deep_explanation"] = generate_deep_explanation(query_text, age, clazz) 
+        response["deep_explanation"] = generate_deep_explanation(query=query_text, age=age, clazz=clazz, context_text=context_text) 
         # context_text required for quiz and key points
         if context_text:
             response["quiz"] = generate_quiz(context_text)

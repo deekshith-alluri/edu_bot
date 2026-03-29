@@ -49,7 +49,7 @@ def extract_json_from_md(raw_text: str) -> dict | list:
 
 
 # SIMPLE Explanation  --------
-def generate_simple_explanation(query: str, age: int = None, clazz: str = None) -> str:
+def generate_simple_explanation(query: str, age: int = None, clazz: str = None, context_text=None) -> str:
     """
     Generates a short 2-3 line explanation for the query.
     """
@@ -61,14 +61,17 @@ def generate_simple_explanation(query: str, age: int = None, clazz: str = None) 
     Respond ONLY with a JSON object in this exact format:
     {{"answer":"YOUR_ANSWER_HERE"}}
     """
+    if context_text:
+        prompt+=f"from context : {context_text}"
+
     if age and clazz:
         prompt += f"\nThis explanation is for a {age}-year-old student in {clazz} class in appropriate tone so that they can understand."
 
-    return call_gemini(prompt)
+    return extract_json_from_md(call_gemini(prompt))
 
 
 # DEEP Explanation  ----------
-def generate_deep_explanation(query: str, age: int = None, clazz: str = None) -> str:
+def generate_deep_explanation(query: str, age: int = None, clazz: str = None, context_text=None) -> str:
     """
     Generates a detailed explanation for the query.
     """
@@ -80,10 +83,13 @@ def generate_deep_explanation(query: str, age: int = None, clazz: str = None) ->
     Respond ONLY with a JSON object in this exact format:
     {{"answer":"YOUR_ANSWER_HERE"}}
     """
+    if context_text:
+        prompt+=f"from context : {context_text}"
+
     if age and clazz:
         prompt += f"\nThis explanation is for a {age}-year-old student in {clazz} class in appropriate tone so that they can understand."
 
-    return call_gemini(prompt)
+    return extract_json_from_md(call_gemini(prompt))
 
 
 # QUIZ Builders --------------

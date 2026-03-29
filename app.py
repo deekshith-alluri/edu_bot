@@ -1,181 +1,110 @@
-from flask import Flask, request, jsonify, redirect, render_template
-from flask_jwt_extended import (
-    JWTManager,
-    create_access_token,
-    jwt_required,
-    get_jwt_identity
-)
-from config import _SECRET_KEY_FLASK
-from services.pdf_ops import PDFSearchEngine
-from services.query_classifier import classify_query
-from services.pipeline import handle_query_pipeline
+from flask import Flask, request, jsonify, redirect, render_template, make_response
+from flask_jwt_extended import JWTManager
+from datetime import timedelta
+from config import _SECRET_KEY_FLASK, _DB_ADDR
+from flask_pymongo import PyMongo
+from utils.utility_funcs import set_auth_cookies, get_current_user, api_auth_required
 
+# ---------------- APP INIT ----------------
 app = Flask(__name__)
 
-# JWT Config
-app.config["JWT_SECRET_KEY"] =  _SECRET_KEY_FLASK # change later
+# JWT CONFIG
+app.config["JWT_SECRET_KEY"] = _SECRET_KEY_FLASK
+app.config["JWT_TOKEN_LOCATION"] = ["cookies"]
+
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=2)
+app.config["JWT_REFRESH_TOKEN_EXPIRES"] = timedelta(days=7)
+
+app.config["JWT_ACCESS_COOKIE_NAME"] = "access_token"
+app.config["JWT_REFRESH_COOKIE_NAME"] = "refresh_token"
+
+app.config["JWT_COOKIE_SECURE"] = False  # ⚠️ True in production (HTTPS)
+app.config["JWT_COOKIE_SAMESITE"] = "Lax"
+app.config["JWT_COOKIE_CSRF_PROTECT"] = False
+
 jwt = JWTManager(app)
 
-# ---------------- CORE PIPELINE ----------------
-def main(
-    query,
-    pdf_path=None,
-    age=None,
-    clazz=None,
-    top_n_sentences=5,
-    relevance_threshold=0.1,
-    country="India",
-    BOE="TG SCERT or TG BIE"
-):
-    context_text = None
-    top_sentences = []
-    max_score = 0.0
-
-    if pdf_path:
-        search_engine = PDFSearchEngine(pdf_path)
-        top_results = search_engine.query(query, top_n=top_n_sentences)
-
-        if top_results and isinstance(top_results[0], tuple):
-            top_sentences = [t[0] for t in top_results]
-            top_scores = [t[1] for t in top_results]
-        else:
-            top_sentences = top_results or []
-            top_scores = [0.0] * len(top_sentences)
-
-        max_score = max(top_scores) if top_scores else 0.0
-
-        print(f"Max similarity score: {max_score}")
-
-        if not top_sentences or max_score < relevance_threshold:
-            return {
-                "query": query,
-                "classification": None,
-                "confidence_score": round(max_score, 3),
-                "message": "Cannot answer this query from the provided PDF.",
-                "source_context": [],
-                "simple_explanation": None,
-                "deep_explanation": None,
-                "important_points": None,
-                "quiz": None,
-                "youtube_recommendations": None
-            }
-
-        context_text = " ".join(top_sentences)
-
-    classification_result = classify_query(
-        query,
-        age=age,
-        clazz=clazz,
-        country=country,
-        BOE=BOE
-    )
-
-    result = handle_query_pipeline(
-        query_text=query,
-        classification_result=classification_result,
-        age=age,
-        clazz=clazz,
-        context_text=context_text
-    )
-
-    result["classification"] = classification_result
-    result["confidence_score"] = round(max_score, 3) if pdf_path else None
-    result["source_context"] = top_sentences if pdf_path else None
-
-    return result
+# MongoDB (future use)
+app.config["MONGO_URI"] = _DB_ADDR
+# mongo = PyMongo(app) # uncomment it after fixing setting-up the DB
 
 
 
-# ---------------- HELPERS ----------------
+# ---------------- UI ROUTES ----------------
 
-@jwt.unauthorized_loader
-def missing_token_callback(error):
-    return jsonify({
-        "message": "Token is missing",
-        "redirect": "/login"
-    }), 401
+@app.route("/")
+def home():
+    user, needs_refresh = get_current_user()
 
+    if not user:
+        return render_template("welcome.html")
 
-@jwt.expired_token_loader
-def expired_token_callback(jwt_header, jwt_payload):
-    return jsonify({
-        "message": "Token has expired",
-        "redirect": "/login"
-    }), 401
+    # Logged in
+    response = make_response(render_template("dashboard.html", user=user))
 
+    # Silent refresh
+    if needs_refresh:
+        response = set_auth_cookies(response, user)
 
-@jwt.invalid_token_loader
-def invalid_token_callback(error):
-    return jsonify({
-        "message": "Invalid token",
-        "redirect": "/login"
-    }), 401
+    return response
+
 
 # ---------------- AUTH ROUTES ----------------
 
-@app.route("/login", methods=["POST"])
-def login():
-    data = request.json
+@app.route("/authenticate", methods=["POST", "GET"])
+def authenticate():
 
-    username = data.get("username")
-    password = data.get("password")
+    if request.method == "GET":
+        return render_template("authenticate.html")
+    
+    if request.method =='POST':
+        data = request.json
+        username = data.get("username")
+        password = data.get("password")
 
-    # Dummy auth
-    if username == "admin" and password == "admin":
-        access_token = create_access_token(identity=username)
-        return jsonify({
-            "message": "Login successful",
-            "access_token": access_token
-        })
+        # Dummy auth (replace with MongoDB later)
+        if username == "admin" and password == "admin":
+            response = jsonify({"message": "Login successful"})
+            response = set_auth_cookies(response, username)
+            return response
 
-    return jsonify({"message": "Invalid credentials"}), 401
-
-
-@app.route("/welcome")
-def welcome():
-    return jsonify({"message": "Welcome to the EduBot API!"})
+    return jsonify({"error": "Invalid credentials"}), 401
 
 
-# ---------------- PROTECTED ROUTES ----------------
-
-@app.route("/profile")
-@jwt_required()
-def profile():
-    current_user = get_jwt_identity()
-
-    return jsonify({
-        "username": current_user,
-        "role": "student",
-        "preferences": {
-            "class": "10th grade",
-            "country": "India"
-        }
-    })
+@app.route("/logout")
+def logout():
+    response = redirect("/")
+    response.delete_cookie("access_token")
+    response.delete_cookie("refresh_token")
+    return response
 
 
-@app.route("/dashboard", methods=["POST"])
-@jwt_required()
-def dashboard():
-    current_user = get_jwt_identity()
+# ---------------- API ROUTES ----------------
+
+@app.route("/api/query", methods=["POST"])
+def api_query():
+
+    user, refresh_response, error = api_auth_required()
+
+    if error:
+        return error
 
     data = request.json
-
     query = data.get("query")
-    pdf_path = data.get("pdf_path")
-    age = data.get("age")
-    clazz = data.get("class")
 
     if not query:
-        return jsonify({"error": "Query is required"}), 400
+        return jsonify({"error": "Query required"}), 400
 
-    result = main(
-        query=query,
-        pdf_path=pdf_path,
-        age=age,
-        clazz=clazz
-    )
+    # Plug your AI pipeline here
+    result = {
+        "query": query,
+        "response": f"Processed for {user}"
+    }
 
-    result["user"] = current_user  # optional tagging
+    # Attach refreshed cookies if needed
+    if refresh_response:
+        refresh_response.set_data(jsonify(result).get_data())
+        return refresh_response
 
     return jsonify(result)
 

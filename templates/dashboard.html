@@ -1,0 +1,90 @@
+
+<!-- ================= dashboard.html ================= -->
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block extra_styles %}
+<style>
+body { background:#f4f6fb; color:#000; }
+.header {
+  background:#667eea;
+  color:white;
+  padding:15px;
+  display:flex;
+  justify-content:space-between;
+}
+.chat-container {
+  padding:20px;
+  height:75vh;
+  overflow-y:auto;
+}
+.message {
+  padding:10px 15px;
+  border-radius:15px;
+  margin:10px 0;
+  max-width:60%;
+  animation:fadeIn 0.4s ease;
+}
+.user { background:#667eea; color:white; margin-left:auto; }
+.bot { background:#e2e2f0; }
+.input-area {
+  position:fixed;
+  bottom:0;
+  width:100%;
+  display:flex;
+  padding:10px;
+  background:white;
+}
+input {
+  flex:1;
+  padding:10px;
+  border-radius:20px;
+  border:1px solid #ccc;
+}
+button.send {
+  margin-left:10px;
+  background:#667eea;
+  color:white;
+}
+</style>
+{% endblock %}
+{% block content %}
+<div class="header">
+  <h3>EduBot</h3>
+  <a href="/logout" style="color:white;">Logout</a>
+</div>
+
+<div id="chat" class="chat-container"></div>
+
+<div class="input-area">
+  <input id="query" placeholder="Ask something...">
+  <button class="send" onclick="sendQuery()">Send</button>
+</div>
+
+<script>
+async function sendQuery(){
+  const input = document.getElementById('query');
+  const chat = document.getElementById('chat');
+
+  const userMsg = document.createElement('div');
+  userMsg.className='message user';
+  userMsg.innerText=input.value;
+  chat.appendChild(userMsg);
+
+  const res = await fetch('/api/query',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({query:input.value})
+  });
+
+  const data = await res.json();
+
+  const botMsg = document.createElement('div');
+  botMsg.className='message bot';
+  botMsg.innerText=data.response || 'Error';
+  chat.appendChild(botMsg);
+
+  input.value='';
+  chat.scrollTop=chat.scrollHeight;
+}
+</script>
+{% endblock %}
