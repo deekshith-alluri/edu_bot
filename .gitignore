@@ -4,3 +4,4 @@ venv/
 buffer/
 loaded_cache/
 *.env
+pdf_content/

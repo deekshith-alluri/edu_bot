@@ -67,8 +67,7 @@ if __name__ == "__main__":
         if q == 'e':
             break
         pdf_path="C:/Users/Nandini/Desktop/edu_bot/data/cms.pdf"
-        pdf_path=None
         age = "20"
         clazz="UG 1st Year"
         BOE = "Osmania University"
-        main(query=q, pdf_path=pdf_path, age=age, clazz=clazz, BOE=BOE)
+        main_pipe(query=q, pdf_path=pdf_path, age=age, clazz=clazz, BOE=BOE)
