@@ -20,7 +20,7 @@ def get_appdata_collection():
 
 # ---------------- USER FUNCTIONS ----------------
 
-def create_user(username, email, password):
+def create_user(username, email, password, **kwargs):
     users = get_users_collection()
 
     if users.find_one({"username": username}):
@@ -31,11 +31,15 @@ def create_user(username, email, password):
 
     hashed_password = generate_password_hash(password)
 
-    users.insert_one({
+    user_doc = {
         "username": username,
         "email": email,
         "password": hashed_password
-    })
+    }
+    # Update with extra demographic variables
+    user_doc.update(kwargs)
+
+    users.insert_one(user_doc)
 
     return True, "User created"
 
@@ -51,6 +55,21 @@ def authenticate_user(username, password):
         return False, "Invalid password"
 
     return True, user
+
+def get_user(username):
+    users = get_users_collection()
+    user = users.find_one({"username": username}, {"_id": 0, "password": 0})
+    return user
+
+def update_user(username, **kwargs):
+    users = get_users_collection()
+    users.update_one({"username": username}, {"$set": kwargs})
+    return True
+
+def delete_user(username):
+    users = get_users_collection()
+    users.delete_one({"username": username})
+    return True
 
 
 # ---------------- APP DATA FUNCTIONS ----------------

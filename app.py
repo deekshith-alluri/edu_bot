@@ -40,8 +40,9 @@ def home():
     if not user:
         return render_template("welcome.html")
 
-    # Logged in
-    response = make_response(render_template("dashboard.html", user=user))
+    # Logged in - fetch robust DB data
+    user_data = db_services.get_user(user) or {}
+    response = make_response(render_template("dashboard.html", user=user, user_data=user_data))
 
     # Silent refresh
     if needs_refresh:
@@ -80,12 +81,31 @@ def register():
     username = data.get("username")
     email = data.get("email")
     password = data.get("password")
+    
+    # Extra data points
+    firstName = data.get("firstName")
+    lastName = data.get("lastName")
+    gender = data.get("gender")
+    class_study = data.get("class_study")
+    dob = data.get("dob")
+    country = data.get("country")
+    state = data.get("state")
+    school = data.get("school")
+    board = data.get("board")
+    phone = data.get("phone")
 
     # --- Validation ---
     if not username or not email or not password:
-        return jsonify({"error": "All fields are required"}), 400
+        return jsonify({"error": "All primary fields are required"}), 400
+        
+    if not dob or not country or not board or not gender:
+        return jsonify({"error": "DOB, Gender, Country, and Board of Education are strictly required."}), 400
 
-    success, message = db_services.create_user(username, email, password)
+    success, message = db_services.create_user(
+        username, email, password,
+        firstName=firstName, lastName=lastName, gender=gender, class_study=class_study,
+        dob=dob, country=country, state=state, school=school, board=board, phone=phone
+    )
 
     if not success:
         if message == "username_exists":
@@ -97,7 +117,42 @@ def register():
 
 @app.route("/profile")
 def profile():
-    return render_template('profile.html')
+    user, _ = get_current_user()
+    if not user:
+        return redirect("/authenticate")
+    user_data = db_services.get_user(user) or {}
+    return render_template('profile.html', user=user, user_data=user_data)
+
+@app.route("/api/user/update", methods=["POST"])
+def update_user_profile():
+    user, response, error = api_auth_required()
+    if error:
+        return error
+    
+    data = request.json
+    # Only update what was provided
+    db_services.update_user(user, **data)
+    
+    if not response:
+        response = make_response(jsonify({"message": "Profile updated"}))
+    else:
+        response.data = jsonify({"message": "Profile updated"}).data
+        response.content_type = 'application/json'
+        
+    return response
+
+@app.route("/api/user/delete", methods=["POST"])
+def delete_user_account():
+    user, response, error = api_auth_required()
+    if error:
+        return error
+        
+    db_services.delete_user(user)
+    
+    res = make_response(jsonify({"message": "Account deleted"}))
+    res.set_cookie("access_token", "", expires=0)
+    res.set_cookie("refresh_token", "", expires=0)
+    return res
 
 @app.route("/logout", methods=["POST"])
 def logout():
@@ -105,36 +160,6 @@ def logout():
     response.delete_cookie("access_token")
     response.delete_cookie("refresh_token")
     return response
-
-# ---------------- API ROUTES ----------------
-
-@app.route("/api/query", methods=["POST"])
-def api_query():
-
-    user, refresh_response, error = api_auth_required()
-
-    if error:
-        return error
-
-    data = request.json
-    query = data.get("query")
-
-    if not query:
-        return jsonify({"error": "Query required"}), 400
-
-    # Plug your AI pipeline here
-    result = {
-        "query": query,
-        "response": f"Processed for {user}"
-    }
-
-    # Attach refreshed cookies if needed
-    if refresh_response:
-        refresh_response.set_data(jsonify(result).get_data())
-        return refresh_response
-
-    return jsonify(result)
-
 
 # ---------------- RUN ----------------
 

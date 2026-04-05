@@ -5,3 +5,5 @@ buffer/
 loaded_cache/
 *.env
 pdf_content/
+scratch_test.py
+gemini.md

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Study Spark | Profile</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <style>
+        .profile-input[readonly] {
+            background-color: transparent;
+            border-color: transparent;
+            padding-left: 0;
+            pointer-events: none;
+            color: var(--text-primary);
+        }
+    </style>
+</head>
+<body class="transition-colors duration-300">
+
+    <div id="navbar-container"></div>
+
+    <main class="flex-grow flex items-center justify-center p-4">
+        <div class="glass-card w-full max-w-2xl p-8 mb-10">
+            
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4 border-b border-slate-200 dark:border-slate-700 pb-6">
+                <div class="flex items-center gap-4">
+                    <div class="w-16 h-16 rounded-full bg-indigo-500 text-white flex items-center justify-center text-2xl font-bold shadow-lg" id="avatar-initials">
+                        {{ user_data.get('firstName', 'S')[0] | upper }}
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold" id="profile-name">{{ user_data.get('firstName', 'Student') }} {{ user_data.get('lastName', 'User') }}</h1>
+                        <p class="text-slate-500 text-sm" id="profile-username">@{{ user_data.get('username', 'student') }}</p>
+                    </div>
+                </div>
+            </div>
+
+                <form id="profile-form" onsubmit="saveProfile(event)">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
+                        <div class="form-group">
+                            <label>First Name</label>
+                            <input type="text" id="prof-first" class="form-control profile-input" value="{{ user_data.get('firstName', '') }}" readonly required>
+                        </div>
+                        <div class="form-group">
+                            <label>Last Name</label>
+                            <input type="text" id="prof-last" class="form-control profile-input" value="{{ user_data.get('lastName', '') }}" readonly required>
+                        </div>
+                    <div class="form-group sm:col-span-1">
+                        <label>Gender</label>
+                        <select id="prof-gender" class="form-control profile-input" disabled required>
+                            <option value="Male" {% if user_data.get('gender') == 'Male' %}selected{% endif %}>Male</option>
+                            <option value="Female" {% if user_data.get('gender') == 'Female' %}selected{% endif %}>Female</option>
+                            <option value="Other" {% if user_data.get('gender') == 'Other' %}selected{% endif %}>Other</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group col-span-1 sm:col-span-1">
+                        <label>Email Address</label>
+                        <input type="email" id="prof-email" class="form-control profile-input" value="{{ user_data.get('email', '') }}" readonly required>
+                    </div>
+                        
+                    <div class="form-group col-span-1 sm:col-span-1">
+                        <label>Phone Number</label>
+                        <input type="text" id="prof-phone" class="form-control profile-input" value="{{ user_data.get('phone', '') }}" readonly>
+                    </div>
+
+                    <div class="form-group sm:col-span-1">
+                        <label>Date of Birth</label>
+                        <input type="date" id="prof-dob" class="form-control profile-input" value="{{ user_data.get('dob', '') }}" readonly required>
+                    </div>
+
+                    <div class="form-group sm:col-span-1">
+                        <label>Country</label>
+                        <input type="text" id="prof-country" class="form-control profile-input" value="{{ user_data.get('country', '') }}" readonly required>
+                    </div>
+                    
+                    <div class="form-group sm:col-span-1">
+                        <label>State</label>
+                        <input type="text" id="prof-state" class="form-control profile-input" value="{{ user_data.get('state', '') }}" readonly>
+                    </div>
+
+                    <div class="form-group sm:col-span-1">
+                        <label>Board of Education</label>
+                        <input type="text" id="prof-board" class="form-control profile-input" value="{{ user_data.get('board', '') }}" readonly required>
+                    </div>
+                        
+                        <div class="form-group">
+                            <label>Class of Study</label>
+                            <input type="text" id="prof-class" class="form-control profile-input" value="{{ user_data.get('class_study', '') }}" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label>School</label>
+                            <input type="text" id="prof-school" class="form-control profile-input" value="{{ user_data.get('school', '') }}" readonly>
+                        </div>
+                    </div>
+
+                <div id="save-actions" class="hidden flex justify-end gap-3 mt-4">
+                    <button type="button" class="btn-secondary rounded-full border border-indigo-200" onclick="toggleEdit()">Cancel</button>
+                    <button type="submit" class="btn-primary rounded-full border border-indigo-500" id="btn-save">Save Changes</button>
+                </div>
+            </form>
+
+        </div>
+    </main>
+
+    <script src="/static/js/layout.js"></script>
+    <script>
+        let isEditing = false;
+
+        function toggleEdit() {
+            isEditing = !isEditing;
+            const inputs = document.querySelectorAll('.profile-input');
+            const saveActions = document.getElementById('save-actions');
+            const navEdit = document.getElementById('nav-edit-btn');
+
+            inputs.forEach(input => {
+                if(isEditing) {
+                    input.removeAttribute('readonly');
+                    input.removeAttribute('disabled');
+                } else {
+                    input.setAttribute('readonly', 'true');
+                    if(input.tagName === 'SELECT') input.setAttribute('disabled', 'true');
+                }
+            });
+
+            if(isEditing) {
+                saveActions.classList.remove('hidden');
+                if(navEdit) navEdit.innerText = 'Cancel Editing';
+                document.getElementById('prof-first').focus();
+            } else {
+                saveActions.classList.add('hidden');
+                if(navEdit) navEdit.innerText = 'Edit Profile';
+            }
+        }
+
+        async function saveProfile(e) {
+            e.preventDefault();
+            
+            const btn = document.getElementById('btn-save');
+            btn.innerHTML = 'Saving...';
+            
+            const payload = {
+                firstName: document.getElementById('prof-first').value,
+                lastName: document.getElementById('prof-last').value,
+                email: document.getElementById('prof-email').value,
+                gender: document.getElementById('prof-gender').value,
+                phone: document.getElementById('prof-phone').value,
+                dob: document.getElementById('prof-dob').value,
+                country: document.getElementById('prof-country').value,
+                state: document.getElementById('prof-state').value,
+                board: document.getElementById('prof-board').value,
+                class_study: document.getElementById('prof-class').value,
+                school: document.getElementById('prof-school').value
+            };
+            
+            try {
+                const res = await fetch('/api/user/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (res.ok) {
+                    LayoutManager.showToast('Profile updated successfully!');
+                    document.getElementById('profile-name').innerText = `${payload.firstName} ${payload.lastName}`;
+                    document.getElementById('avatar-initials').innerText = payload.firstName.charAt(0).toUpperCase();
+                } else {
+                    LayoutManager.showToast('Failed to save profile', 'error');
+                }
+            } catch (err) {
+                LayoutManager.showToast('Network error', 'error');
+            }
+            
+            btn.innerHTML = 'Save Changes';
+            toggleEdit();
+        }
+    </script>
+</body>
+</html>

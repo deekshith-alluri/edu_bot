@@ -52,13 +52,14 @@ def main_pipe(query, pdf_path=None, age=None, clazz=None, top_n_sentences=5, rel
         classification_result=classification_result,
         age=age,
         clazz=clazz,
-        context_text=context_text
+        context_text=context_text,
+        country=country
     )
 
     result["classification"] = classification_result
     result["confidence_score"] = round(max_score, 3) if pdf_path else None
     result["source_context"] = top_sentences if pdf_path else None
-    print(f"Result: {result}")  
+    # print(f"Result: {result}")  
     return result
 
 if __name__ == "__main__":

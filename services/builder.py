@@ -93,15 +93,15 @@ def generate_deep_explanation(query: str, age: int = None, clazz: str = None, co
 
 
 # QUIZ Builders --------------
-def generate_quiz(context: str, num_questions: int = 4) -> list:
+def generate_quiz(context: str = None, query: str = None, age: int = None, country: str = None, clazz: str = None, num_questions: int = 4) -> list:
     """
-        Generates a quiz from the given context.
-        Returns a list of dictionaries in the form:
-        {"question": "...", "options": [...], "correct_option": "x"}
+    Generates a quiz from the given context, or falls back to using query, age, class, and country if context is absent.
+    Returns a list of dictionaries in the form:
+    {"question": "...", "options": [...], "correct_option": "x"}
     """
     prompt = f"""
         You are an educational assistant for Study Spark.
-        Based on the following context, generate {num_questions} multiple-choice questions.
+        Generate {num_questions} multiple-choice questions.
         Each question must have 4 options.
         Respond ONLY with a JSON array in this exact format:
         TRY USING HTML NOT MARKDOWN.
@@ -109,10 +109,16 @@ def generate_quiz(context: str, num_questions: int = 4) -> list:
         {{"question":"...", "options":["...","...","...","..."], "correct_option":"x"}},
         ...
         ]
-
-        Context:
-        {context}
     """
+
+    if context:
+        prompt += f"\nBased ONLY on the following context:\n{context}\n"
+    else:
+        prompt += f"\nBased on the topic of the query: '{query}'\n"
+        if age and clazz:
+            prompt += f"Tailor the difficulty for a {age}-year-old student in {clazz} class."
+        if country:
+            prompt += f" Consider the educational standards and common phrasing in {country}."
 
     raw_text = call_gemini(prompt)
 
@@ -127,23 +133,29 @@ def generate_quiz(context: str, num_questions: int = 4) -> list:
 
 
 # Important points to remember
-def generate_important_points(topic_or_context: str) -> list:
+def generate_important_points(topic_or_context: str = None, query: str = None, age: int = None, country: str = None, clazz: str = None) -> list:
     """
     Generates important points, formulas, or exam-focused notes for a topic.
     Returns a list of strings in JSON array format.
     """
     prompt = f"""
     You are an educational assistant.
-    From the following topic/context, list the important points a student should remember for exams.
+    List the important points a student should remember for exams regarding this topic.
     Include key formulas, concepts, or rules in bullet-point style.
     
     TRY TO USE HTML NOT MARKDOWN like lists <li> OR <ul>. 
     Respond ONLY with a JSON array of strings, like:
     ["Point-1", "Point-2", "Point-3", ...]
-
-    Topic/Context:
-    {topic_or_context}
     """
+
+    if topic_or_context:
+        prompt += f"\nBased ONLY on the following Context:\n{topic_or_context}\n"
+    else:
+        prompt += f"\nBased on the topic of the query: '{query}'\n"
+        if age and clazz:
+            prompt += f"Tailor the important points for a {age}-year-old student in {clazz} class."
+        if country:
+            prompt += f" Consider the educational curriculum typically taught in {country}."
 
     raw_text = call_gemini(prompt)
     points_json = extract_json_from_md(raw_text)

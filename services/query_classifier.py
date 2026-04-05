@@ -16,11 +16,11 @@ def classify_query(query: str, age: int, clazz: str, country: str, BOE: str) -> 
     """
     instruction = f"""
         You are a query classifier.
-        Given a user query, classify whether the query is 'simple' 
-        or 'hard' or 'fact-check' for a {age}-year-old student in {clazz} class studying in {BOE} in {country}. 
+        Given a user query, classify whether the query is 'greeting', 'simple', 
+        or 'medium' or 'hard' or 'fact-check' for a {age}-year-old student in {clazz} class studying in {BOE} in {country}. 
 
         Respond ONLY with a JSON object in this exact format:
-        {{"classified_into":"simple" OR "classified_into":"medium" OR "classified_into":"hard" OR "classified_into":"fact-check"}}
+        {{"classified_into":"greeting" OR "classified_into":"simple" OR "classified_into":"medium" OR "classified_into":"hard" OR "classified_into":"fact-check"}}
 
         Use ```json ...``` markdown formatting.
 

@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Study Spark | Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <style>
+        body,
+        html {
+            height: 100%;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Responsive Block for Small Screens */
+        .mobile-blocker {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .app-container {
+                display: none !important;
+            }
+
+            .mobile-blocker {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                height: 100vh;
+                text-align: center;
+                padding: 2rem;
+                background: var(--bg-primary);
+                color: var(--text-primary);
+                z-index: 9999;
+            }
+        }
+
+        /* Layout Architecture */
+        .app-container {
+            display: flex;
+            flex-grow: 1;
+            height: calc(100vh - 72px);
+            /* minus navbar */
+            overflow: hidden;
+            padding: 1rem;
+            gap: 1rem;
+        }
+
+        /* Panels */
+        .panel {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: 0 4px 15px var(--shadow-color);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            transition: width 0.3s ease, flex 0.3s ease;
+        }
+
+        .chat-panel {
+            flex: 1;
+            /* By default takes whole screen */
+            min-width: 400px;
+        }
+
+        .pdf-panel,
+        .quiz-panel {
+            display: none;
+            /* Initially hidden */
+            flex: 1;
+            /* 50% split when visible */
+            min-width: 300px;
+        }
+
+        /* Resizer (Optional simple dragger style, functional visual only) */
+        .resizer {
+            display: none;
+            width: 4px;
+            cursor: col-resize;
+            background: transparent;
+            margin: 0 -8px;
+            z-index: 10;
+        }
+
+        /* Chat area styles */
+        .messages-container {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .chat-bubble {
+            max-width: 80%;
+            padding: 12px 18px;
+            border-radius: 16px;
+            line-height: 1.5;
+            animation: fadeIn 0.3s ease-out;
+            word-wrap: break-word;
+        }
+
+        .chat-bubble.sent {
+            align-self: flex-end;
+            background: var(--accent-primary);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .chat-bubble.received {
+            align-self: flex-start;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-bottom-left-radius: 4px;
+            color: var(--text-primary);
+        }
+
+        .input-area {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            display: flex;
+            align-items: flex-end;
+            gap: 0.5rem;
+        }
+
+        textarea.chat-input {
+            width: 100%;
+            min-height: 48px;
+            max-height: 150px;
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 12px 20px;
+            resize: none;
+            overflow-y: hidden;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        textarea.chat-input:focus {
+            border-color: var(--accent-primary);
+        }
+
+        .icon-btn {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+        }
+
+        .icon-btn:hover {
+            background: var(--bg-primary);
+            color: var(--accent-primary);
+        }
+
+        /* Panel Headers */
+        .panel-header {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-primary);
+            font-weight: 600;
+        }
+
+        /* YouTube Carousel */
+        .yt-carousel {
+            display: flex;
+            gap: 1rem;
+            overflow-x: auto;
+            padding: 1rem;
+            scroll-behavior: smooth;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .yt-carousel::-webkit-scrollbar {
+            height: 4px;
+        }
+
+        .yt-card {
+            min-width: 200px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .yt-thumbnail {
+            width: 100%;
+            height: 112px;
+            background: #cbd5e1;
+            object-fit: cover;
+        }
+
+        /* Quiz UI */
+        .quiz-container {
+            padding: 1rem;
+        }
+
+        .quiz-option {
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .quiz-option:hover {
+            border-color: var(--accent-primary);
+            background: var(--bg-primary);
+        }
+
+        .quiz-option.correct {
+            background: rgba(16, 185, 129, 0.2);
+            border-color: #10b981;
+            color: #065f46;
+            font-weight: 600;
+        }
+
+        .dark .quiz-option.correct {
+            color: #34d399;
+        }
+
+        .quiz-option.incorrect {
+            background: rgba(239, 68, 68, 0.2);
+            border-color: #ef4444;
+            color: #991b1b;
+            font-weight: 600;
+        }
+
+        .dark .quiz-option.incorrect {
+            color: #f87171;
+        }
+
+        /* File Upload Modal */
+        #upload-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="mobile-blocker">
+        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+            class="text-indigo-500 mb-6 animate-pulse">
+            <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+            <line x1="3" x2="21" y1="9" y2="9" />
+            <path d="m9 16 3-3 3 3" />
+        </svg>
+        <h2 class="text-2xl font-bold mb-3">Mobile Support Unavailable</h2>
+        <p class="text-slate-500">The Student Dashboard workspace requires a larger screen for optimal learning with our
+            dual-panel interface. Please access from a desktop or tablet.</p>
+    </div>
+
+    <div id="navbar-container"></div>
+
+    <div class="app-container">
+
+        <!-- Center Chat Panel -->
+        <div class="panel chat-panel" id="chat-panel">
+            <div class="panel-header text-sm text-slate-500">
+                <span>Learning Assistant</span>
+                <span id="chat-status" class="text-xs text-indigo-500 flex items-center gap-1"></span>
+            </div>
+
+            <div class="messages-container relative" id="chat-messages">
+                <div id="welcome-screen" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none transition-opacity duration-500 z-10">
+                    <div class="w-16 h-16 bg-gradient-to-tr from-indigo-500 to-purple-500 rounded-full flex items-center justify-center mb-4 shadow-lg">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+                    </div>
+                    <h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400">Welcome, {{ user }}</h1>
+                    <p class="text-slate-500 mt-2 text-center max-w-sm">How can I help you learn today? Ask me any question or upload a PDF context.</p>
+                </div>
+            </div>
+            <script>
+                // --- Input Auto Grow ---
+                function autoGrow(element) {
+                    element.style.height = "5px";
+                    element.style.height = (element.scrollHeight) + "px";
+                }
+
+                function handleEnter(e) {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        sendMessage();
+                    }
+                }
+            </script>
+
+            <div class="input-area">
+                <button class="icon-btn" onclick="openUploadModal()" title="Upload Context (PDF)">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2">
+                        <path d="M12 5v14" />
+                        <path d="M5 12h14" />
+                    </svg>
+                </button>
+
+                <textarea id="chat-input" class="chat-input" placeholder="Ask a question... " rows="1"
+                    oninput="autoGrow(this)" onkeydown="handleEnter(event)"></textarea>
+
+                <button class="icon-btn text-indigo-500" id="send-btn" onclick="sendMessage()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2">
+                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="resizer" id="resizer"></div>
+
+        <!-- Right / Split Panel (PDF Viewer) -->
+        <div class="panel pdf-panel transition-layout" id="pdf-panel">
+            <div class="panel-header">
+                <span class="truncate" id="pdf-panel-title">Document Viewer</span>
+                <button class="icon-btn" style="width:28px; height:28px; background:var(--bg-secondary)"
+                    onclick="closePanel('pdf')">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="flex-grow bg-slate-100 dark:bg-slate-800 flex flex-col relative w-full h-full">
+                <iframe id="pdf-viewer" class="absolute inset-0 w-full h-full border-0"
+                    title="PDF Document Viewer"></iframe>
+            </div>
+        </div>
+
+        <!-- Left / Split Panel (Quiz / YouTube) -->
+        <!-- Note: We inject it visually on the right or left. Using flexbox, we can just display it. Let's make it appear in the split area -->
+        <div class="panel quiz-panel transition-layout" id="quiz-panel">
+            <div class="panel-header border-b-2 border-indigo-500">
+                <span class="text-indigo-600 dark:text-indigo-400 font-bold">Deep Dive Mode</span>
+                <button class="icon-btn" style="width:28px; height:28px; background:var(--bg-secondary)"
+                    onclick="closePanel('quiz')">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="text-xs px-4 mt-6 mb-2 text-slate-500 uppercase tracking-widest font-bold">Recommended Videos</div>
+            <div class="flex items-center gap-6 px-4 mb-6" id="yt-container" style="display:none;">
+                <button
+                    class="icon-btn flex items-center justify-center text-slate-500 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 rounded-full transition-all"
+                    style="width:36px; height:36px; flex-shrink:0; cursor:pointer;" onclick="prevYt()">&#10094;</button>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 flex-grow overflow-hidden transition-all py-2"
+                    id="yt-inner-container">
+                    <!-- Dynamically injected -->
+                </div>
+                <button
+                    class="icon-btn flex items-center justify-center text-slate-500 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 rounded-full transition-all"
+                    style="width:36px; height:36px; flex-shrink:0; cursor:pointer;" onclick="nextYt()">&#10095;</button>
+            </div>
+
+            <div
+                class="text-xs px-4 mt-4 text-slate-500 uppercase tracking-widest font-bold border-t border-slate-200 dark:border-slate-800 pt-3">
+                Interactive Quiz</div>
+            <div class="quiz-container" id="quiz-container">
+                <!-- Dynamically injected -->
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Modals -->
+    <div id="upload-modal">
+        <div class="glass-card w-full max-w-sm p-6 relative">
+            <button class="absolute top-4 right-4 text-slate-500 hover:text-red-500" onclick="closeUploadModal()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+            <h3 class="text-lg font-bold mb-2">Upload Context</h3>
+            <p class="text-sm text-slate-500 mb-4 text-error-color border-l-2 border-error-color pl-2">Only written PDFs
+                up to 10MB are supported.</p>
+
+            <input type="file" id="pdf-file-input" accept="application/pdf" class="hidden"
+                onchange="handleFileSelect(this)">
+
+            <div class="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-8 text-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                onclick="document.getElementById('pdf-file-input').click()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" class="mx-auto mb-2 text-indigo-500">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
+                <div id="file-name-display" class="font-medium">Click to select PDF</div>
+            </div>
+
+            <button id="btn-upload-submit" class="btn-primary w-full mt-4 justify-center" onclick="submitPdfUpload()"
+                disabled>
+                Upload File
+            </button>
+        </div>
+    </div>
+
+
+    <script src="/static/js/layout.js"></script>
+    <script>
+        // --- Demographics passed closely for AI optimizations ---
+        const userDemographics = {
+            dob: "{{ user_data.get('dob', '') }}",
+            country: "{{ user_data.get('country', 'Unknown') }}",
+            board: "{{ user_data.get('board', 'Unknown') }}",
+            gender: "{{ user_data.get('gender', 'Other') }}"
+        };
+
+        function calculateAge(dobStr) {
+            if (!dobStr) return "Unknown";
+            const dob = new Date(dobStr);
+            if (isNaN(dob)) return "Unknown";
+            const diff_ms = Date.now() - dob.getTime();
+            const age_dt = new Date(diff_ms);
+            return Math.abs(age_dt.getUTCFullYear() - 1970).toString();
+        }
+
+        // --- Mocking Navbar Action Buttons ---
+        // Exposing a method dynamically
+        function addDynamicNavButton(id, text, onClickStr) {
+            const container = document.getElementById('dynamic-nav-actions');
+            if (!container) return;
+
+            if (!document.getElementById(id)) {
+                // Remove existing
+                container.innerHTML = '';
+                const btn = document.createElement('button');
+                btn.id = id;
+                btn.className = 'btn-secondary text-sm px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 border-indigo-200';
+                btn.innerText = text;
+                btn.setAttribute('onclick', onClickStr);
+                container.appendChild(btn);
+            }
+        }
+
+        function removeDynamicNavButton() {
+            const container = document.getElementById('dynamic-nav-actions');
+            if (container) container.innerHTML = '';
+        }
+
+        // --- UI Panels Management ---
+        const panels = {
+            chat: document.getElementById('chat-panel'),
+            pdf: document.getElementById('pdf-panel'),
+            quiz: document.getElementById('quiz-panel'),
+            resizer: document.getElementById('resizer')
+        };
+
+        let currentActiveSplit = null; // 'pdf' or 'quiz'
+
+        function openPanel(type) {
+            if (currentActiveSplit && currentActiveSplit !== type) {
+                panels[currentActiveSplit].style.display = 'none';
+            }
+
+            panels[type].style.display = 'flex';
+            panels.chat.style.flex = '1';
+            panels[type].style.flex = '1';
+            currentActiveSplit = type;
+            removeDynamicNavButton();
+        }
+
+        function closePanel(type) {
+            panels[type].style.display = 'none';
+            panels.chat.style.flex = '1';
+            currentActiveSplit = null;
+
+            // Add back to nav
+            if (type === 'pdf') addDynamicNavButton('nav-btn-pdf', 'Open PDF', "openPanel('pdf')");
+            if (type === 'quiz') addDynamicNavButton('nav-btn-quiz', 'Open Quiz', "openPanel('quiz')");
+        }
+
+        // --- File Upload Logic ---
+        let selectedFile = null;
+
+        function openUploadModal() {
+            document.getElementById('upload-modal').style.display = 'flex';
+            selectedFile = null;
+            document.getElementById('file-name-display').innerText = 'Click to select PDF';
+            document.getElementById('btn-upload-submit').disabled = true;
+        }
+
+        function closeUploadModal() {
+            document.getElementById('upload-modal').style.display = 'none';
+        }
+
+        function handleFileSelect(input) {
+            if (input.files && input.files[0]) {
+                const file = input.files[0];
+                if (file.size > 10 * 1024 * 1024) {
+                    LayoutManager.showToast('File exceeds 10MB limit.', 'error');
+                    input.value = '';
+                    return;
+                }
+                selectedFile = file;
+                document.getElementById('file-name-display').innerText = file.name;
+                document.getElementById('btn-upload-submit').disabled = false;
+            }
+        }
+
+        let currentPdfPath = "";
+        let currentPdfBlobUrl = "";
+
+        function clearPdfContext() {
+            currentPdfPath = "";
+            currentPdfBlobUrl = "";
+            if(window.setPdfModeBadge) window.setPdfModeBadge(null);
+            
+            // If PDF panel is open, close it
+            if(currentActiveSplit === 'pdf') closePanel('pdf');
+            // Remove from dynamic nav
+            removeDynamicNavButton();
+            
+            LayoutManager.showToast('Exited PDF Mode completely.');
+            
+            // Optionally, add a system message in chat
+            appendMessage('<em>System: PDF context has been cleared. I am now answering from general knowledge.</em>', 'received', true);
+        }
+
+        async function submitPdfUpload() {
+            if (!selectedFile) return;
+            const btn = document.getElementById('btn-upload-submit');
+            btn.innerHTML = `<span class="animate-pulse">Uploading ${selectedFile.name}, please wait...</span>`;
+            btn.disabled = true;
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+
+            try {
+                const res = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+
+                if (res.ok) {
+                    LayoutManager.showToast('PDF Mode Engaged! Study Spark is now answering from your document.');
+                    document.getElementById('pdf-panel-title').innerText = selectedFile.name;
+
+                    // Backend saves file, Frontend renders using internal Blob Object URL
+                    currentPdfPath = `pdf_content/${data.filename}`;
+                    currentPdfBlobUrl = URL.createObjectURL(selectedFile);
+
+                    // Set header badge
+                    if(window.setPdfModeBadge) window.setPdfModeBadge(selectedFile.name, clearPdfContext);
+
+                    // Hide welcome screen if present
+                    const welcome = document.getElementById('welcome-screen');
+                    if (welcome) welcome.style.opacity = '0';
+
+                    const viewer = document.getElementById('pdf-viewer');
+                    if (viewer) {
+                        viewer.src = currentPdfBlobUrl;
+                    }
+
+                    closeUploadModal();
+                    openPanel('pdf'); // Split screen for PDF
+                } else {
+                    LayoutManager.showToast(data.error || 'Upload failed', 'error');
+                    btn.disabled = false;
+                }
+            } catch (e) {
+                LayoutManager.showToast('Network error during upload', 'error');
+                btn.disabled = false;
+            }
+            btn.innerHTML = 'Upload File';
+        }
+
+        // --- Chat Logic & Case Handling ---
+        const chatMessages = document.getElementById('chat-messages');
+        const chatInput = document.getElementById('chat-input');
+        const statusInd = document.getElementById('chat-status');
+
+        function appendMessage(text, type, isHtml = false, sourceContext = null) {
+            const wrapper = document.createElement('div');
+            wrapper.style.display = 'flex';
+            wrapper.style.alignItems = 'flex-start';
+            wrapper.style.gap = '10px';
+            wrapper.style.alignSelf = type === 'sent' ? 'flex-end' : 'flex-start';
+            wrapper.style.maxWidth = '85%';
+            wrapper.style.width = 'fit-content'; // Prevents extreme shrinking
+
+            let avatarSvg = '';
+            if (type === 'sent') {
+                // User Avatar based on gender
+                if (userDemographics.gender === 'Female') {
+                    avatarSvg = `<span class="text-xl">👩🏼</span>`;
+                } else if (userDemographics.gender === 'Male') {
+                    avatarSvg = `<span class="text-xl">🧔🏻</span>`;
+                } else {
+                    avatarSvg = `<span class="text-xl">👤</span>`;
+                }
+            } else {
+                // AI Bot Avatar
+                avatarSvg = `<span class="text-xl">🤖</span>`;
+            }
+
+            const avatarDiv = document.createElement('div');
+            avatarDiv.innerHTML = avatarSvg;
+            avatarDiv.className = 'flex-shrink-0 bg-slate-100 dark:bg-slate-800 p-1 rounded-full shadow-sm';
+
+            const msgContainer = document.createElement('div');
+            msgContainer.style.display = 'flex';
+            msgContainer.style.flexDirection = 'column';
+            msgContainer.style.minWidth = '0'; // Essential for flex-children
+
+            const bubble = document.createElement('div');
+            bubble.className = `chat-bubble ${type}`;
+
+            if (isHtml) {
+                bubble.innerHTML = text;
+            } else {
+                bubble.innerText = text;
+            }
+
+            msgContainer.appendChild(bubble);
+
+            if (sourceContext && Array.isArray(sourceContext) && sourceContext.length > 0) {
+                const sourceDiv = document.createElement('div');
+                sourceDiv.className = 'mt-1 text-xs text-slate-500 bg-slate-50 dark:bg-slate-800/50 p-2 rounded border border-slate-200 dark:border-slate-700';
+                sourceDiv.innerHTML = `<span class="font-bold">Sources:</span><br>` + sourceContext.map(s => `• ${s.replace(/\\n/g, '<br>')}`).join('<br>');
+                msgContainer.appendChild(sourceDiv);
+            }
+
+            if (type === 'sent') {
+                wrapper.appendChild(msgContainer);
+                wrapper.appendChild(avatarDiv);
+            } else {
+                wrapper.appendChild(avatarDiv);
+                wrapper.appendChild(msgContainer);
+            }
+
+            chatMessages.appendChild(wrapper);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            return wrapper;
+        }
+
+        async function sendMessage() {
+            const val = chatInput.value.trim();
+            if (!val) return;
+
+            // Hide welcome screen if present
+            const welcome = document.getElementById('welcome-screen');
+            if (welcome) welcome.style.opacity = '0';
+
+            appendMessage(val, 'sent');
+            chatInput.value = '';
+            chatInput.style.height = "48px";
+
+            // Loading bubble logic
+            const loadingBubble = appendMessage('<span class="animate-pulse">Thinking...</span>', 'received', true);
+
+            try {
+                const payload = {
+                    query: val,
+                    age: calculateAge(userDemographics.dob),
+                    class: "{{ user_data.get('class_study', '') }}",
+                    pdf_path: currentPdfPath,
+                    country: userDemographics.country,
+                    board_of_edu: userDemographics.board
+                };
+
+                // Call our mock-enabled backend
+                const res = await fetch('/api/query', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await res.json();
+
+                // Remove loading bubble
+                chatMessages.removeChild(loadingBubble);
+
+                handleCaseLogic(data);
+
+            } catch (e) {
+                chatMessages.removeChild(loadingBubble);
+                appendMessage("Error communicating with AI", 'received');
+            }
+        }
+
+        function handleCaseLogic(data) {
+
+            const classification = data.classification?.classified_into || "simple";
+            const sourceContext = data.source_context;
+            console.log(data)
+            
+            if (['simple', 'greeting', 'fact-check'].includes(classification)) {
+                appendMessage(data.simple_explanation ? data.simple_explanation.answer : 'Simple response.', 'received', true, sourceContext);
+
+            } else if (classification === 'medium') {
+                appendMessage(data.deep_explanation ? data.deep_explanation.answer : 'Complex detailed response.', 'received', true, sourceContext);
+
+            } else if (classification === 'hard') {
+                appendMessage(data.deep_explanation ? data.deep_explanation.answer : "I detected a complex keyword.", 'received', true, sourceContext);
+
+                // Build Left Panel UI
+                buildQuizAndYoutube(data);
+
+                if (currentActiveSplit === 'pdf') closePanel('pdf');
+                openPanel('quiz');
+            }
+        }
+
+        function downloadChatsHTML() {
+            const msgs = document.querySelectorAll('#chat-messages > div');
+            let htmlContent = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <title>Study Spark Chat Log</title>
+                <style>
+                    body { font-family: sans-serif; padding: 2rem; background: #f8fafc; color: #1e293b; max-width: 800px; margin: auto; }
+                    .wrapper { display: flex; gap: 10px; margin-bottom: 24px; align-items: flex-start; }
+                    .sent { flex-direction: row-reverse; }
+                    .bubble { padding: 12px 18px; border-radius: 12px; max-width: 80%; word-wrap: break-word; }
+                    .sent .bubble { background: #6366f1; color: white; border-top-right-radius: 4px; }
+                    .received .bubble { background: white; border: 1px solid #e2e8f0; border-top-left-radius: 4px; }
+                    .avatar { padding: 8px; border-radius: 50%; background: #e2e8f0; font-size: 10px; font-weight: bold; }
+                    .sources { margin-top: 8px; font-size: 12px; color: #64748b; background: #f1f5f9; padding: 8px; border-radius: 4px; }
+                </style>
+            </head>
+            <body>
+                <h1>Study Spark Learning Log</h1>
+                <hr style="margin-bottom: 2rem; border-color: #cbd5e1;">
+            `;
+
+            for (let m of msgs) {
+                // Determine if it was sent or received by inspecting the bubble component
+                const bbl = m.querySelector('.chat-bubble');
+                if (!bbl) continue; // Skip initial empty/malformed
+
+                const isSent = bbl.classList.contains('sent');
+                const avatarText = isSent ? "YOU" : "BOT";
+                const wrapperClass = isSent ? "wrapper sent" : "wrapper received";
+
+                const txt = bbl.innerHTML;
+                let sourcesHtml = '';
+                const sources = m.querySelector('.sources') || m.querySelector('div.mt-1');
+                if (sources) {
+                    sourcesHtml = `<div class="sources">${sources.innerHTML}</div>`;
+                }
+
+                htmlContent += `
+                <div class="${wrapperClass}">
+                    <div class="avatar">${avatarText}</div>
+                    <div style="display:flex; flex-direction:column;">
+                        <div class="bubble">${txt}</div>
+                        ${sourcesHtml}
+                    </div>
+                </div>`;
+            }
+
+            htmlContent += "</body></html>";
+
+            const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = 'chat_study_spark.html';
+            document.body.appendChild(a);
+            
+            // Trigger click synchronously to preserve user-gesture for the download
+            a.click();
+            
+            // Clean up DOM wrapper
+            document.body.removeChild(a);
+            
+            // Delay blob revocation so the browser download manager has time to read the URI
+            setTimeout(() => URL.revokeObjectURL(url), 2000);
+        }
+
+        let globalYtVideos = [];
+        let currentYtIndex = 0;
+
+        function renderYtCarousel() {
+            const container = document.getElementById('yt-inner-container');
+            if (!container) return;
+            container.innerHTML = '';
+
+            const pWidth = container.parentElement.clientWidth;
+            let showCount = 1;
+            if (pWidth > 800) showCount = 3;
+            else if (pWidth > 500) showCount = 2;
+
+            const maxIndex = Math.max(0, globalYtVideos.length - showCount);
+            if (currentYtIndex > maxIndex) currentYtIndex = maxIndex;
+            if (currentYtIndex < 0) currentYtIndex = 0;
+
+            const visibleVideos = globalYtVideos.slice(currentYtIndex, currentYtIndex + showCount);
+
+            visibleVideos.forEach(v => {
+                const vidId = v.url.split('v=')[1]?.split('&')[0];
+                container.innerHTML += `
+                    <div class="yt-card flex flex-col h-full bg-slate-50 dark:bg-slate-800 rounded shadow-sm overflow-hidden transform hover:-translate-y-2 hover:shadow-xl transition-all duration-300">
+                        <iframe class="w-full" height="160" src="https://www.youtube.com/embed/${vidId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                        <div class="p-2">
+                            <p class="text-sm font-bold text-slate-800 dark:text-white truncate" title="${v.title}">${v.title}</p>
+                            <p class="text-xs text-slate-500 truncate" title="${v.channel}">${v.channel}</p>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function prevYt() {
+            if (globalYtVideos.length > 0) {
+                const last = globalYtVideos.pop();
+                globalYtVideos.unshift(last);
+                renderYtCarousel();
+            }
+        }
+
+        function nextYt() {
+            if (globalYtVideos.length > 0) {
+                const first = globalYtVideos.shift();
+                globalYtVideos.push(first);
+                renderYtCarousel();
+            }
+        }
+
+        window.addEventListener('resize', () => { if (globalYtVideos.length > 0) renderYtCarousel(); });
+
+        function buildQuizAndYoutube(data) {
+            // Inject YouTube Array into UI Logic
+            const ytOuter = document.getElementById('yt-container');
+            if (data.youtube_recommendations && data.youtube_recommendations.length > 0) {
+                ytOuter.style.display = 'flex';
+                globalYtVideos = data.youtube_recommendations;
+                currentYtIndex = 0;
+                renderYtCarousel();
+            } else {
+                ytOuter.style.display = 'none';
+            }
+
+            // Inject Quiz
+            const qzContainer = document.getElementById('quiz-container');
+            qzContainer.innerHTML = '';
+            if (data.quiz && data.quiz.length > 0) {
+                data.quiz.forEach((q, idx) => {
+                    let optionsHtml = '';
+                    q.options.forEach(opt => {
+                        let safeOpt = opt.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+                        let safeAnswer = (q.correct_option || q.answer || "").toString().replace(/'/g, "\\'").replace(/"/g, "&quot;");
+                        optionsHtml += `<div class="quiz-option text-sm" onclick="handleQuizAnswer(this, '${safeOpt}', '${safeAnswer}')">${opt}</div>`;
+                    });
+
+                    qzContainer.innerHTML += `
+                        <div class="mb-6">
+                            <p class="font-medium mb-3">${idx + 1}. ${q.question}</p>
+                            ${optionsHtml}
+                        </div>
+                    `;
+                });
+            }
+
+            if (data.important_points && data.important_points.length > 0) {
+                qzContainer.innerHTML += `
+                    <div class="mt-6 border-t border-slate-200 dark:border-slate-700 pt-6">
+                        <p class="text-indigo-600 dark:text-indigo-400 font-bold mb-4 uppercase text-xs tracking-widest flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-indigo-500"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                            Most Important Points to Remember
+                        </p>
+                        <ul class="list-none space-y-3 text-sm text-slate-700 dark:text-slate-300">
+                            ${data.important_points.map(pt => {
+                                // Strip HTML tags in case the LLM incorrectly generated <li>, <p>, etc.
+                                let tempDiv = document.createElement('div');
+                                tempDiv.innerHTML = pt;
+                                let cleanPt = (tempDiv.innerText || tempDiv.textContent).trim();
+                                
+                                // Strip accidental bullet dots or dashes at the beginning
+                                cleanPt = cleanPt.replace(/^[\-•\*\d\.]+\s*/, '');
+                                
+                                return `
+                                <li class="flex items-start gap-3 bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-lg overflow-hidden">
+                                    <span class="text-indigo-500 mt-0.5 shrink-0 text-lg">&bull;</span>
+                                    <span class="flex-1 break-words leading-relaxed text-indigo-500">${cleanPt}</span>
+                                </li>
+                                `;
+                            }).join('')}
+                        </ul>
+                    </div>
+                `;
+            }
+        }
+
+        function handleQuizAnswer(el, selected, correct) {
+            // Disable siblings
+            const siblings = el.parentElement.querySelectorAll('.quiz-option');
+            siblings.forEach(s => s.style.pointerEvents = 'none');
+
+            const sText = selected.trim().toLowerCase();
+            const cText = correct.trim().toLowerCase();
+
+            let isMatch = false;
+            if (cText.length === 1) {
+                // If answer is just 'a', 'b', 'c', match prefixes precisely
+                isMatch = sText === cText || sText.startsWith(cText + ".") || sText.startsWith(cText + ")");
+            } else {
+                // Strip common prefixes like "a. " to compare raw text securely
+                let cleanS = sText.replace(/^[a-d][\.\)]\s*/, '').trim();
+                let cleanC = cText.replace(/^[a-d][\.\)]\s*/, '').trim();
+                isMatch = cleanS === cleanC || cleanS.includes(cleanC) || cleanC.includes(cleanS);
+            }
+
+            if (isMatch) {
+                el.classList.add('correct');
+            } else {
+                el.classList.add('incorrect');
+                // Highlight the correct one
+                siblings.forEach(s => {
+                    const siblingText = s.innerText.trim().toLowerCase();
+                    let sibClean = siblingText.replace(/^[a-d][\.\)]\s*/, '').trim();
+                    let cClean = cText.replace(/^[a-d][\.\)]\s*/, '').trim();
+                    let sibMatch = false;
+                    
+                    if (cText.length === 1) {
+                        sibMatch = siblingText === cText || siblingText.startsWith(cText + ".") || siblingText.startsWith(cText + ")");
+                    } else {
+                        sibMatch = sibClean === cClean || sibClean.includes(cClean) || cClean.includes(sibClean);
+                    }
+                    
+                    if (sibMatch) s.classList.add('correct');
+                });
+            }
+        }
+    </script>
+</body>
+
+</html>
