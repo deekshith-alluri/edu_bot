@@ -16,7 +16,7 @@ def call_gemini(prompt: str, temperature: float = 0.0) -> str:
     Returns the model's raw text.
     """
     response = client.models.generate_content(
-        model="gemini-2.5-flash",
+        model="gemini-2.5-flash-lite",
         contents=prompt,
         config=types.GenerateContentConfig(
             temperature=temperature,

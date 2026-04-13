@@ -28,7 +28,7 @@ def classify_query(query: str, age: int, clazz: str, country: str, BOE: str) -> 
     """
 
     response = client.models.generate_content(
-        model="gemini-2.5-flash",
+        model="gemini-2.5-flash-lite",
         contents=instruction,
         config=types.GenerateContentConfig(
             temperature=0.0,
